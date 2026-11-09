@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YiriDesign Admin</title>
+<meta name="theme-color" content="#0F766E">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="admin.webmanifest">
+<link rel="icon" href="admin-192.png">
+<style>
+:root{--bg:#0B1F1C;--card:#12302B;--tx:#EAF6F3;--mu:#8FB5AD;--ac:#14B8A6;--er:#F87171;--bd:#1E4A43}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,sans-serif;padding:16px;max-width:640px;margin:auto}
+h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 8px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+input,button{font:inherit;border-radius:12px;border:1px solid var(--bd);padding:12px;width:100%;margin-top:10px;background:var(--card);color:var(--tx)}
+button{background:var(--ac);color:#062925;font-weight:700;border:0;cursor:pointer}button.sec{background:var(--card);color:var(--tx);border:1px solid var(--bd);width:auto;margin:0;padding:8px 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.n{font-size:28px;font-weight:800}.l{color:var(--mu);font-size:12px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}.row .b{flex:1;height:10px;background:var(--bd);border-radius:6px;overflow:hidden}.row .b i{display:block;height:100%;background:var(--ac)}
+.row .v{min-width:34px;text-align:right;color:var(--mu)}.row .k{min-width:90px;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.err{background:var(--card);border-left:3px solid var(--er);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;word-break:break-word}
+.msg{color:var(--er);margin-top:10px;min-height:20px}.mu{color:var(--mu);font-size:12px}.hid{display:none}
+.days{display:flex;align-items:flex-end;gap:4px;height:70px}.days i{flex:1;background:var(--ac);border-radius:3px 3px 0 0;min-height:2px}
+</style></head><body>
+<div id="login" class="hid">
+ <h1>YiriDesign Admin</h1><p class="mu">Accès réservé.</p>
+ <input id="em" type="email" placeholder="E-mail" autocomplete="username">
+ <input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password">
+ <button id="go">Se connecter</button><div class="msg" id="lm"></div>
+</div>
+<div id="dash" class="hid">
+ <div class="top"><h1>YiriDesign Admin</h1><div><button class="sec" id="rf">↻</button> <button class="sec" id="lo">Quitter</button></div></div>
+ <div id="body"><p class="mu">Chargement…</p></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var URL_="https://segdgrecoreoqvrqwavj.supabase.co",KEY="sb_publishable_D7vXRASIe4twImyViuzW-A_d3JCvRl8";
+var sb=supabase.createClient(URL_,KEY),$=function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function bars(a,k,v){var m=Math.max.apply(null,a.map(function(x){return x[v]}).concat([1]));return a.length?a.map(function(x){return '<div class="row"><span class="k">'+esc(x[k]==null?"?":x[k])+'</span><span class="b"><i style="width:'+(100*x[v]/m)+'%"></i></span><span class="v">'+x[v]+'</span></div>'}).join(""):'<p class="mu">Rien pour le moment.</p>'}
+function show(w){$("login").className=w=="l"?"":"hid";$("dash").className=w=="d"?"":"hid"}
+async function load(){
+ $("body").innerHTML='<p class="mu">Chargement…</p>';
+ var r=await sb.rpc("admin_stats");
+ if(r.error){ if(/refuse/.test(r.error.message)){$("body").innerHTML='<p class="msg">Ce compte n\'est pas administrateur.</p>'}else{$("body").innerHTML='<p class="msg">Erreur : '+esc(r.error.message)+'</p>'}return}
+ var s=r.data;
+ var nj=s.nouveaux_par_jour,mx=Math.max.apply(null,nj.map(function(x){return x.n}).concat([1]));
+ $("body").innerHTML=
+ '<div class="grid"><div class="c"><div class="n">'+s.total+'</div><div class="l">Téléphones (total)</div></div>'+
+ '<div class="c"><div class="n">'+s.actifs_1j+'</div><div class="l">Actifs 24 h</div></div>'+
+ '<div class="c"><div class="n">'+s.actifs_7j+'</div><div class="l">Actifs 7 jours</div></div>'+
+ '<div class="c"><div class="n">'+s.actifs_30j+'</div><div class="l">Actifs 30 jours</div></div>'+
+ '<div class="c"><div class="n">'+s.exports+'</div><div class="l">Exports (total)</div></div>'+
+ '<div class="c"><div class="n">'+s.exports_7j+'</div><div class="l">Exports 7 jours</div></div></div>'+
+ '<h2>Nouveaux par jour (14 j)</h2><div class="days">'+nj.map(function(x){return '<i title="'+x.jour+': '+x.n+'" style="height:'+(100*x.n/mx)+'%"></i>'}).join("")+'</div><p class="mu">'+(nj.length?nj[0].jour+' → '+nj[nj.length-1].jour:'Aucun nouveau')+'</p>'+
+ '<h2>Services les plus utilisés</h2>'+bars(s.services,"nom","n")+
+ '<h2>Versions</h2>'+bars(s.versions,"ver","n")+
+ '<h2>Plateformes</h2>'+bars(s.plateformes,"plat","n")+
+ '<h2>Dernières erreurs</h2>'+(s.erreurs.length?s.erreurs.map(function(e){return '<div class="err"><b>'+esc(e.e)+'</b> · '+esc(new Date(e.t).toLocaleString("fr-FR"))+' · '+esc(e.device)+'<br>'+esc(e.d)+'</div>'}).join(""):'<p class="mu">Aucune erreur 🎉</p>')+
+ '<h2>Maintenance</h2><p class="mu">'+s.evenements+' événements enregistrés. Le nettoyage supprime ceux de plus de 90 jours.</p><button class="sec" id="pg">Nettoyer</button>';
+ $("pg").onclick=async function(){var p=await sb.rpc("admin_purge");alert(p.error?p.error.message:p.data+" événement(s) supprimé(s)");load()};
+}
+async function boot(){
+ var s=await sb.auth.getSession();
+ if(s.data.session){show("d");load()}else show("l");
+}
+$("go").onclick=async function(){
+ $("lm").textContent="…";
+ var r=await sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value});
+ if(r.error){$("lm").textContent="E-mail ou mot de passe incorrect.";return}
+ $("pw").value="";$("lm").textContent="";show("d");load();
+};
+$("pw").addEventListener("keydown",function(e){if(e.key=="Enter")$("go").click()});
+$("lo").onclick=async function(){await sb.auth.signOut();show("l")};
+$("rf").onclick=load;
+boot();
+</script></body></html>
