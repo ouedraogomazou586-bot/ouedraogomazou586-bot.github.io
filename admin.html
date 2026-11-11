@@ -14,6 +14,7 @@
 h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 8px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 input,button{font:inherit;border-radius:12px;border:1px solid var(--bd);padding:12px;width:100%;margin-top:10px;background:var(--card);color:var(--tx)}
+input[type=checkbox]{width:20px;height:20px;flex:none;margin:0;padding:0}label.chk{justify-content:flex-start}
 button{background:var(--ac);color:#062925;font-weight:700;border:0;cursor:pointer}button.sec{background:var(--card);color:var(--tx);border:1px solid var(--bd);width:auto;margin:0;padding:8px 12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px}
 .n{font-size:28px;font-weight:800}.l{color:var(--mu);font-size:12px}
@@ -71,8 +72,8 @@ function alertsBlock(al){
 function controlBlock(al){
  if(!al)return "";
  var f=al.flags||{},m=al.message||{},h='<h2>Contrôle à distance</h2><p class="mu">Coupe une fonction qui pose problème : l\'application la désactive au prochain signal, sans nouvelle version.</p>';
- FLAGS.forEach(function(x){h+='<label class="chk" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" data-flag="'+x[0]+'"'+(f[x[0]]===false?'':' checked')+'> '+esc(x[1])+'</label>';});
- h+='<button id="fsave">Enregistrer les interrupteurs</button><h2>Message aux utilisateurs</h2><p class="mu">Affiché en haut de l\'accueil, avec une croix pour le fermer. Écris-le dans la langue de tes utilisateurs.</p><textarea id="mtxt" rows="3" maxlength="300" style="width:100%" placeholder="Ex. Nouvelle version disponible : mets à jour l\'application.">'+esc(m.texte||"")+'</textarea><label class="chk" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="mon"'+(m.actif?' checked':'')+'> Afficher ce message</label><button id="msave">Enregistrer le message</button>';
+ FLAGS.forEach(function(x){h+='<label class="chk" style="display:flex;gap:12px;align-items:center;justify-content:flex-start;margin:10px 0;text-align:left"><input type="checkbox" data-flag="'+x[0]+'"'+(f[x[0]]===false?'':' checked')+'> '+esc(x[1])+'</label>';});
+ h+='<button id="fsave">Enregistrer les interrupteurs</button><h2>Message aux utilisateurs</h2><p class="mu">Affiché en haut de l\'accueil, avec une croix pour le fermer. Écris-le dans la langue de tes utilisateurs.</p><textarea id="mtxt" rows="3" maxlength="300" style="width:100%" placeholder="Ex. Nouvelle version disponible : mets à jour l\'application.">'+esc(m.texte||"")+'</textarea><label class="chk" style="display:flex;gap:12px;align-items:center;justify-content:flex-start;margin:10px 0;text-align:left"><input type="checkbox" id="mon"'+(m.actif?' checked':'')+'> Afficher ce message</label><button id="msave">Enregistrer le message</button>';
  return h;
 }
 async function load(){
