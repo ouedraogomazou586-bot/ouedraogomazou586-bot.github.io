@@ -51,6 +51,9 @@ function devUI(dv){
 }
 async function mark(all,v){var ids=[];Array.prototype.forEach.call(document.querySelectorAll(".dv"),function(c){if(c.checked)ids.push(c.value)});if(!ids.length){alert("Coche au moins un appareil");return}var r=await sb.rpc("admin_mark",{p_ids:ids,p_val:true});if(r.error){alert(r.error.message);return}load()}
 async function getDl(){try{var r=await fetch("https://api.github.com/repos/ouedraogomazou586-bot/yiridesign/releases?per_page=100");if(!r.ok)return null;var j=await r.json(),t=0,l=[];j.forEach(function(x){var n=0;(x.assets||[]).forEach(function(a){if(/\.apk$/i.test(a.name))n+=a.download_count});t+=n;l.push({v:x.tag_name||x.name,n:n})});return {total:t,list:l.slice(0,8)}}catch(e){return null}}
+function flag(c){if(!c||c==="??")return "🌐";try{return String.fromCodePoint.apply(null,c.toUpperCase().split("").map(function(x){return 127397+x.charCodeAt(0)}))}catch(e){return "🌐"}}
+function cname(c){if(!c||c==="??")return "Inconnu";try{return new Intl.DisplayNames(["fr"],{type:"region"}).of(c)||c}catch(e){return c}}
+function paysBlock(pc){if(!pc)return '<p class="mu">Pays indisponibles : exécute le fichier pays.sql dans Supabase.</p>';if(!pc.length)return '<p class="mu">Aucun utilisateur.</p>';var rows=pc.map(function(x){return {pays:flag(x.pays)+" "+cname(x.pays)+" ("+x.actifs_30j+" actifs)",n:x.n}});var inc=pc.filter(function(x){return x.pays==="??"}).reduce(function(t,x){return t+x.n},0);return bars(rows,"pays","n")+(inc?'<p class="mu">« Inconnu » : appareils dont le pays n\'est pas encore connu ; il apparaît à leur prochaine ouverture.</p>':'')}
 async function load(){
  $("body").innerHTML='<p class="mu">Chargement…</p>';
  var r=await sb.rpc("admin_stats");
@@ -59,14 +62,13 @@ async function load(){
  var r2=await sb.rpc("admin_stats2"),s2=r2.error?null:r2.data;
  var dl=await getDl();
  var r3=await sb.rpc("admin_devices"),dv=r3.error?null:r3.data;
- var rp=await sb.rpc("admin_get_promo"),pr=rp.error?null:rp.data;
+ var r4=await sb.rpc("admin_countries"),pc=r4.error?null:r4.data;
  var goal=+(function(){try{return localStorage.getItem('goal')}catch(e){return 0}})()||1000;
  var nj=s.nouveaux_par_jour,mx=Math.max.apply(null,nj.map(function(x){return x.n}).concat([1]));
  $("body").innerHTML=
  '<div class="grid"><div class="hero"><div class="n">'+s.total+'</div><div class="l">Utilisateurs de l\'application (appareils)</div></div>'+
  '<div class="hero"><div class="n">'+(dl?dl.total:'—')+'</div><div class="l">Téléchargements de l\'APK</div></div></div>'+
  '<div class="c" style="margin:10px 0"><div class="l">Objectif avant le mode payant</div><div class="pb"><i style="width:'+Math.min(100,100*Math.max(s.total,dl?dl.total:0)/goal)+'%"></i></div><div><b>'+Math.max(s.total,dl?dl.total:0)+'</b> / <input class="t" id="goal" type="number" value="'+goal+'">'+'<button class="sec" id="gs">OK</button></div></div>'+
- (pr?'<div class="c" style="margin:10px 0"><div class="l">Offre de lancement (gratuit)</div><div style="margin:6px 0">État : <b>'+(pr.actif?'🟢 en cours':'🔴 terminée ou arrêtée')+'</b> · '+pr.users+' / '+pr.max+' utilisateurs · fin le '+esc(new Date(pr.fin).toLocaleDateString('fr-FR'))+'</div><div class="mu" style="margin-bottom:6px">Elle s\'arrête à la première limite atteinte : la date ou le nombre.</div><label style="display:flex;align-items:center;gap:8px;margin:6px 0"><input type="checkbox" style="width:auto;margin:0" id="pe"'+(pr.enabled?' checked':'')+'> Activée</label><div style="display:flex;gap:6px;flex-wrap:wrap"><input class="t" style="flex:1;min-width:150px" id="pf" type="date" value="'+esc(String(pr.fin).slice(0,10))+'"><input class="t" style="flex:1;min-width:100px" id="pm" type="number" min="1" value="'+pr.max+'"><button class="sec" id="ps">Enregistrer</button></div><div class="msg" id="pmsg"></div></div>':'<div class="c" style="margin:10px 0"><div class="l">Offre de lancement</div><p class="mu">Pour l\'activer : exécute promo.sql dans Supabase.</p></div>')+
  '<div class="grid"><div class="c"><div class="n">'+s.total+'</div><div class="l">Téléphones (total)</div></div>'+
  '<div class="c"><div class="n">'+s.actifs_1j+'</div><div class="l">Actifs 24 h</div></div>'+
  '<div class="c"><div class="n">'+s.actifs_7j+'</div><div class="l">Actifs 7 jours</div></div>'+
@@ -78,7 +80,7 @@ async function load(){
  '<h2>Services les plus utilisés</h2>'+bars(s.services,"nom","n")+
  (s2?'<h2>Services (7 derniers jours)</h2>'+bars(s2.services_7j,'nom','n')+'<h2>Formats exportés</h2>'+bars(s2.formats,'nom','n')+'<h2>Exports par jour (14 j)</h2>'+bars(s2.exports_par_jour,'jour','n'):'')+
  '<h2>Téléchargements par version</h2>'+(dl?bars(dl.list,'v','n'):'<p class="mu">GitHub indisponible.</p>')+
- '<h2>Versions</h2>'+bars(s.versions,"ver","n")+
+ '<h2>Pays des utilisateurs</h2>'+paysBlock(pc)+'<h2>Versions</h2>'+bars(s.versions,"ver","n")+
  '<h2>Plateformes</h2>'+bars(s.plateformes,"plat","n")+
  '<h2>Dernières erreurs</h2>'+(s.erreurs.length?s.erreurs.map(function(e){return '<div class="err"><b>'+esc(e.e)+'</b> · '+esc(new Date(e.t).toLocaleString("fr-FR"))+' · '+esc(e.device)+'<br>'+esc(e.d)+'</div>'}).join(""):'<p class="mu">Aucune erreur 🎉</p>')+
  (dv?devUI(dv):'<p class="mu">Pour séparer ton téléphone des utilisateurs : exécute admin3.sql dans Supabase.</p>')+
@@ -87,8 +89,6 @@ async function load(){
  if($("dvm"))$("dvm").onclick=function(){mark(true,false)};
  if($("dva"))$("dva").onclick=function(){Array.prototype.forEach.call(document.querySelectorAll(".dv"),function(c){c.checked=true});mark(true,true)};
  Array.prototype.forEach.call(document.querySelectorAll("[data-un]"),function(b){b.onclick=async function(){await sb.rpc("admin_mark",{p_ids:[b.getAttribute("data-un")],p_val:false});load()}});
- var ps=$("ps");if(ps)ps.onclick=async function(){var d=$("pf").value,m=parseInt($("pm").value,10);if(!d||!(m>0)){$("pmsg").textContent="Date ou nombre invalide";return}
-  var rr=await sb.rpc("admin_set_promo",{p_enabled:$("pe").checked,p_fin:d+"T23:59:59Z",p_max:m});if(rr.error){$("pmsg").textContent="Erreur : "+rr.error.message;return}load()};
  $("gs").onclick=function(){try{localStorage.setItem('goal',$("goal").value)}catch(e){}load()};
  $("csv").onclick=function(){var L=[["indicateur","valeur"],["utilisateurs",s.total],["actifs_24h",s.actifs_1j],["actifs_7j",s.actifs_7j],["actifs_30j",s.actifs_30j],["exports",s.exports],["telechargements_apk",dl?dl.total:""]];s.services.forEach(function(x){L.push(["service:"+x.nom,x.n])});var b=new Blob([L.map(function(a){return a.join(";")}).join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="yiridesign_stats.csv";a.click()};
  $("pg").onclick=async function(){var p=await sb.rpc("admin_purge");alert(p.error?p.error.message:p.data+" événement(s) supprimé(s)");load()};
