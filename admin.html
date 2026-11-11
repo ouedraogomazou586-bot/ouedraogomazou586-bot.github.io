@@ -54,6 +54,27 @@ async function getDl(){try{var r=await fetch("https://api.github.com/repos/ouedr
 function flag(c){if(!c||c==="??")return "🌐";try{return String.fromCodePoint.apply(null,c.toUpperCase().split("").map(function(x){return 127397+x.charCodeAt(0)}))}catch(e){return "🌐"}}
 function cname(c){if(!c||c==="??")return "Inconnu";try{return new Intl.DisplayNames(["fr"],{type:"region"}).of(c)||c}catch(e){return c}}
 function paysBlock(pc){if(!pc)return '<p class="mu">Pays indisponibles : exécute le fichier pays.sql dans Supabase.</p>';if(!pc.length)return '<p class="mu">Aucun utilisateur.</p>';var rows=pc.map(function(x){return {pays:flag(x.pays)+" "+cname(x.pays)+" ("+x.actifs_30j+" actifs)",n:x.n}});var inc=pc.filter(function(x){return x.pays==="??"}).reduce(function(t,x){return t+x.n},0);return bars(rows,"pays","n")+(inc?'<p class="mu">« Inconnu » : appareils dont le pays n\'est pas encore connu ; il apparaît à leur prochaine ouverture.</p>':'')}
+var LIM_MO=500; /* limite de la base : 500 pour l'offre gratuite ; mets 8000 après le passage à l'offre Pro */
+var FLAGS=[["detourage_en_ligne","Détourage en ligne (photo d'identité)"],["ocr","Extraire le texte (scanner)"],["scanner_cv","Détection renforcée du scanner"]];
+function alertsBlock(al){
+ if(!al)return '<h2>Alertes</h2><p class="mu">Alertes indisponibles : exécute le fichier controle.sql dans Supabase.</p>';
+ var L=[];
+ function add(c,t){L.push('<div class="err" style="border-left:4px solid '+c+'">'+t+'</div>');}
+ if(al.erreurs_1h>=10)add("#dc2626","🚨 <b>"+al.erreurs_1h+" erreurs</b> en 1 heure : regarde « Dernières erreurs » et coupe la fonction concernée ci-dessous si besoin.");
+ else if(al.erreurs_1h>=3)add("#f59e0b","⚠️ "+al.erreurs_1h+" erreurs en 1 heure.");
+ if(al.base_mo>=LIM_MO*0.9)add("#dc2626","🚨 Base à <b>"+al.base_mo+" Mo</b> sur "+LIM_MO+" Mo : nettoie ou passe à l'offre Pro.");
+ else if(al.base_mo>=LIM_MO*0.7)add("#f59e0b","⚠️ Base à "+al.base_mo+" Mo sur "+LIM_MO+" Mo.");
+ if(al.dernier_signal){var h=(Date.now()-new Date(al.dernier_signal).getTime())/36e5;if(h>48)add("#f59e0b","⚠️ Aucun signal depuis "+Math.round(h)+" h : vérifie que l'application envoie bien ses signaux.");}
+ if(!L.length)add("#16a34a","✅ Tout va bien : "+al.erreurs_24h+" erreur(s) sur 24 h, base à "+al.base_mo+" Mo, "+al.actifs_1j+" actifs aujourd'hui.");
+ return '<h2>Alertes</h2>'+L.join("");
+}
+function controlBlock(al){
+ if(!al)return "";
+ var f=al.flags||{},m=al.message||{},h='<h2>Contrôle à distance</h2><p class="mu">Coupe une fonction qui pose problème : l\'application la désactive au prochain signal, sans nouvelle version.</p>';
+ FLAGS.forEach(function(x){h+='<label class="chk" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" data-flag="'+x[0]+'"'+(f[x[0]]===false?'':' checked')+'> '+esc(x[1])+'</label>';});
+ h+='<button id="fsave">Enregistrer les interrupteurs</button><h2>Message aux utilisateurs</h2><p class="mu">Affiché en haut de l\'accueil, avec une croix pour le fermer. Écris-le dans la langue de tes utilisateurs.</p><textarea id="mtxt" rows="3" maxlength="300" style="width:100%" placeholder="Ex. Nouvelle version disponible : mets à jour l\'application.">'+esc(m.texte||"")+'</textarea><label class="chk" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="mon"'+(m.actif?' checked':'')+'> Afficher ce message</label><button id="msave">Enregistrer le message</button>';
+ return h;
+}
 async function load(){
  $("body").innerHTML='<p class="mu">Chargement…</p>';
  var r=await sb.rpc("admin_stats");
@@ -63,9 +84,10 @@ async function load(){
  var dl=await getDl();
  var r3=await sb.rpc("admin_devices"),dv=r3.error?null:r3.data;
  var r4=await sb.rpc("admin_countries"),pc=r4.error?null:r4.data;
+ var r5=await sb.rpc("admin_alerts"),al=r5.error?null:r5.data;
  var goal=+(function(){try{return localStorage.getItem('goal')}catch(e){return 0}})()||1000;
  var nj=s.nouveaux_par_jour,mx=Math.max.apply(null,nj.map(function(x){return x.n}).concat([1]));
- $("body").innerHTML=
+ $("body").innerHTML=alertsBlock(al)+controlBlock(al)+
  '<div class="grid"><div class="hero"><div class="n">'+s.total+'</div><div class="l">Utilisateurs de l\'application (appareils)</div></div>'+
  '<div class="hero"><div class="n">'+(dl?dl.total:'—')+'</div><div class="l">Téléchargements de l\'APK</div></div></div>'+
  '<div class="c" style="margin:10px 0"><div class="l">Objectif avant le mode payant</div><div class="pb"><i style="width:'+Math.min(100,100*Math.max(s.total,dl?dl.total:0)/goal)+'%"></i></div><div><b>'+Math.max(s.total,dl?dl.total:0)+'</b> / <input class="t" id="goal" type="number" value="'+goal+'">'+'<button class="sec" id="gs">OK</button></div></div>'+
@@ -91,6 +113,8 @@ async function load(){
  Array.prototype.forEach.call(document.querySelectorAll("[data-un]"),function(b){b.onclick=async function(){await sb.rpc("admin_mark",{p_ids:[b.getAttribute("data-un")],p_val:false});load()}});
  $("gs").onclick=function(){try{localStorage.setItem('goal',$("goal").value)}catch(e){}load()};
  $("csv").onclick=function(){var L=[["indicateur","valeur"],["utilisateurs",s.total],["actifs_24h",s.actifs_1j],["actifs_7j",s.actifs_7j],["actifs_30j",s.actifs_30j],["exports",s.exports],["telechargements_apk",dl?dl.total:""]];s.services.forEach(function(x){L.push(["service:"+x.nom,x.n])});var b=new Blob([L.map(function(a){return a.join(";")}).join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="yiridesign_stats.csv";a.click()};
+ if($("fsave"))$("fsave").onclick=async function(){var f={};Array.prototype.forEach.call(document.querySelectorAll("[data-flag]"),function(c){f[c.getAttribute("data-flag")]=c.checked});var r=await sb.rpc("admin_config_set",{p_key:"flags",p_value:f});alert(r.error?r.error.message:"Enregistré. Les téléphones le verront à leur prochain signal.");load()};
+ if($("msave"))$("msave").onclick=async function(){var t=$("mtxt").value.trim(),on=$("mon").checked&&t.length>0;var r=await sb.rpc("admin_config_set",{p_key:"message",p_value:{id:String(Date.now()),texte:t,actif:on}});alert(r.error?r.error.message:(on?"Message publié.":"Message retiré."));load()};
  $("pg").onclick=async function(){var p=await sb.rpc("admin_purge");alert(p.error?p.error.message:p.data+" événement(s) supprimé(s)");load()};
 }
 async function boot(){
